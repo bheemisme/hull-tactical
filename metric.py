@@ -1,6 +1,9 @@
 import numpy as np
 import pandas as pd
 import pandas.api.types
+import polars as pl
+import preprocess as pp
+import joblib
 
 MIN_INVESTMENT = 0
 MAX_INVESTMENT = 2
@@ -10,7 +13,7 @@ class ParticipantVisibleError(Exception):
     pass
 
 
-def score(solution: pd.DataFrame, submission: pd.DataFrame, row_id_column_name: str) -> float:
+def score(solution: pd.DataFrame) -> float:
     """
     Calculates a custom evaluation metric (volatility-adjusted Sharpe ratio).
 
@@ -21,11 +24,11 @@ def score(solution: pd.DataFrame, submission: pd.DataFrame, row_id_column_name: 
         float: The calculated adjusted Sharpe ratio.
     """
 
-    if not pandas.api.types.is_numeric_dtype(submission['prediction']):
-        raise ParticipantVisibleError('Predictions must be numeric')
+    # if not pandas.api.types.is_numeric_dtype(submission['prediction']):
+    #     raise ParticipantVisibleError('Predictions must be numeric')
 
-    solution = solution
-    solution['position'] = submission['prediction']
+    # solution = solution
+    # solution['position'] = submission['prediction']
 
     if solution['position'].max() > MAX_INVESTMENT:
         raise ParticipantVisibleError(f'Position of {solution["position"].max()} exceeds maximum of {MAX_INVESTMENT}')
@@ -64,10 +67,46 @@ def score(solution: pd.DataFrame, submission: pd.DataFrame, row_id_column_name: 
     # Calculate the return penalty
     return_gap = max(
         0,
-        (market_mean_excess_return - strategy_mean_excess_return) * 100 * trading_days_per_yr,
+        (market_mean_excess_return - strategy_mean_excess_return) * 100 * trading_days_per_yr
     )
     return_penalty = 1 + (return_gap**2) / 100
 
     # Adjust the Sharpe ratio by the volatility and return penalty
     adjusted_sharpe = sharpe / (vol_penalty * return_penalty)
     return min(float(adjusted_sharpe), 1_000_000)
+
+def predict():
+    
+    X_train, X_eval, _, _ = pp.preprocess('data/train.csv')
+    
+    model_fr = joblib.load("checkpoints/XGBRegressor_forward_returns_1.pkl")
+    model_rfr = joblib.load("checkpoints/XGBRegressor_risk_free_rate_1.pkl")
+    
+    X_train_pd = X_train.to_pandas()
+    X_eval_pd = X_eval.to_pandas()
+
+    X_train =  X_train.with_columns([
+        pl.Series('forward_returns', model_fr.predict(X_train_pd)),
+        pl.Series('risk_free_rate', model_rfr.predict(X_train_pd))
+    ])
+    X_train = X_train.with_columns(pl.lit(0.5).alias('position'))
+    X_eval =  X_eval.with_columns([
+        pl.Series('forward_returns', model_fr.predict(X_eval_pd)),
+        pl.Series('risk_free_rate', model_rfr.predict(X_eval_pd))
+    ])
+    X_eval = X_eval.with_columns(pl.lit(0.5).alias('position'))
+    
+    
+    X_eval = X_eval.to_pandas()
+    X_train = X_train.to_pandas()
+    
+    train_score = score(X_train)
+    eval_score = score(X_eval)
+    
+    print(f'train score: {train_score}, eval score: {eval_score}')
+    
+
+
+    
+if __name__ == '__main__':
+    predict()

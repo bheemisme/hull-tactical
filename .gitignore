@@ -1,6 +1,12 @@
+# dirs
+/**/__pycache__
+venv
 data
 kaggle_evaluation
 
 
-/**/__pycache__
+# file extensions
 /**/*.csv
+/**/*.pkl
+/**/*.joblib
+

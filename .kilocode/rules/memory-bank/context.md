@@ -15,6 +15,10 @@ The project is currently in the **initial data exploration and analysis phase**.
 - **EDA Notebook and Utilities**: Created `v1.ipynb` with data loading, column info summary, and feature type counts; developed `eda/utils.py`, `eda/queries.py`, `eda/plots.py`, and `eda/process.py` with comprehensive utility functions for data analysis, querying, visualization, and processing; created `requirements.txt` with project dependencies; added `get_feature_counts` to queries.py for aggregated null/non-null counts by feature type; implemented `create_lagged_targets` in process.py for shifting target variables
 - **Data Preprocessing**: Implemented `preprocess.py` for loading data, removing dummy features, type casting, creating lagged targets, and splitting into train/eval sets
 - **Model Training**: Created `train.py` for training and evaluating XGBRegressor, LGBMRegressor, RandomForestRegressor, ExtraTreesRegressor on all three targets using MSE, with results saved to CSV
+- **Model Inference**: Implemented `predict.py` for Kaggle competition inference with loaded models from checkpoints
+- **Kaggle Evaluation Setup**: Added `kaggle_evaluation/` directory with inference server for competition submission
+- **Model Checkpoints**: Created `checkpoints/` directory for saved trained models
+- **Test Data**: Added `data/test.csv` for evaluation
 - **Custom Metric**: Implemented `metric.py` with volatility-adjusted Sharpe ratio for evaluation
 - **Project Documentation**: Comprehensive documentation in `agents.md`, `data_description.md`, `README.md` with project overview, data schema, and workflow
 

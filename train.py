@@ -1,6 +1,8 @@
 import pandas as pd
 import numpy as np
 import eda.utils as ut
+import joblib
+import polars as pl
 
 from sklearn.metrics import mean_squared_error
 from xgboost import XGBRegressor
@@ -10,6 +12,7 @@ from preprocess import preprocess
 from pprint import pprint
 
 # Load data
+train_df = pl.read_csv('data/train.csv')
 X_train, X_eval, y_train, y_eval = preprocess('data/train.csv')
 
 X_train = X_train.to_pandas()
@@ -43,8 +46,6 @@ def train(idx, results_df):
 
         print(f"\nEvaluating models for target: {target}")
         for name, model in models.items():
-            # Create pipeline
-            
 
             # Fit
             model.fit(X_train, y_train_target)
@@ -58,21 +59,25 @@ def train(idx, results_df):
             eval_mse = mean_squared_error(y_eval_target, y_eval_pred)
 
             results['idx'].append(idx)
-            results['model'].append(model)
+            results['model'].append(name)
             results['target'].append(target)
             results['train_mse'].append(train_mse)
             results['eval_mse'].append(eval_mse)
 
             print(f"  {name} - Train MSE: {train_mse:.4f}, Eval MSE: {eval_mse:.4f}")
+            
+            model_path = f'./checkpoints/{name}_{target}_{idx}.pkl'
+            joblib.dump(model, model_path)
+            print(f'model saved to {model_path}')
 
 
-    new_results_df = pd.DataFrame(results, index=results['idx'])
+    new_results_df = pd.DataFrame(results)
     if results_df is not None:
-        results_df = pd.concat((results_df, new_results_df))
+        results_df = pd.concat((results_df, new_results_df), axis=0)
     else:
         results_df = new_results_df
         
-    results_df.to_csv("./results.csv")
+    results_df.to_csv("./results.csv", index=False)
     pprint(results_df)
 
     print("\nModel evaluation completed for all targets.")
