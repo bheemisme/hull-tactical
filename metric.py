@@ -75,6 +75,35 @@ def score(solution: pd.DataFrame) -> float:
     adjusted_sharpe = sharpe / (vol_penalty * return_penalty)
     return min(float(adjusted_sharpe), 1_000_000)
 
+def compute_position_single_trade(forward_return, risk_free_rate):
+    """
+    Compute the position for a single trade using only the trade's forward return and risk-free rate.
+    
+    Args:
+        forward_return (float): forward return of the risky asset
+        risk_free_rate (float): risk-free return for the same period
+    
+    Returns:
+        float: position (between MIN_INVESTMENT and MAX_INVESTMENT)
+    """
+    # Step 1: compute excess return
+    excess_return = forward_return - risk_free_rate
+
+    # Step 2: allocate proportionally to the sign of excess return
+    # Positive excess return → invest more; negative → invest minimum (0)
+    if excess_return <= 0:
+        position = MIN_INVESTMENT
+    else:
+        # Scale position by magnitude of excess return, but clip to max
+        # Here we choose a simple linear scaling: 1% excess → 1 unit position
+        # You can tune the scaling factor for risk appetite
+        position = min(MAX_INVESTMENT, excess_return / 0.01)
+
+    # Step 3: clip to bounds (redundant but safe)
+    position = np.clip(position, MIN_INVESTMENT, MAX_INVESTMENT)
+
+    return position
+
 def predict():
     
     X_train, X_eval, _, _ = pp.preprocess('data/train.csv')
@@ -89,13 +118,19 @@ def predict():
         pl.Series('forward_returns', model_fr.predict(X_train_pd)),
         pl.Series('risk_free_rate', model_rfr.predict(X_train_pd))
     ])
+    
+    X_train = X_train.with_columns(
+        pl.struct(['forward_returns', 'risk_free_rate']).map_elements(lambda s: compute_position_single_trade(s['forward_returns'], s['risk_free_rate']), return_dtype=pl.Float64).alias("position")
+    )
+    
     X_train = X_train.with_columns(pl.lit(0.5).alias('position'))
     X_eval =  X_eval.with_columns([
         pl.Series('forward_returns', model_fr.predict(X_eval_pd)),
         pl.Series('risk_free_rate', model_rfr.predict(X_eval_pd))
     ])
-    X_eval = X_eval.with_columns(pl.lit(0.5).alias('position'))
-    
+    X_eval = X_eval.with_columns(
+        pl.struct(['forward_returns', 'risk_free_rate']).map_elements(lambda s: compute_position_single_trade(s['forward_returns'], s['risk_free_rate']), return_dtype=pl.Float64).alias("position")
+    )
     
     X_eval = X_eval.to_pandas()
     X_train = X_train.to_pandas()
