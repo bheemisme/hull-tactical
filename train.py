@@ -3,6 +3,8 @@ import numpy as np
 import eda.utils as ut
 import joblib
 import polars as pl
+import logging
+import os
 
 from sklearn.metrics import mean_squared_error
 from xgboost import XGBRegressor
@@ -10,6 +12,18 @@ from lightgbm import LGBMRegressor
 from sklearn.ensemble import RandomForestRegressor, ExtraTreesRegressor
 from preprocess import preprocess
 from pprint import pprint
+
+# Setup logging
+log_dir = "temp"
+log_file = os.path.join(log_dir, 'train_log.log')
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s - %(levelname)s - %(message)s',
+                    handlers=[
+                        logging.FileHandler(log_file),
+                        logging.StreamHandler()
+                    ])
+
+logging.info(f"Logging to: {log_file}")
 
 # Load data
 train_df = pl.read_csv('data/train.csv')
@@ -30,6 +44,7 @@ models = {
 }
 
 def train(idx, results_df):
+    logging.info(f"train index: {idx}")
     # Evaluate each model for each target
     results = {
         "idx": [],
@@ -44,7 +59,7 @@ def train(idx, results_df):
         y_train_target = y_train[target]
         y_eval_target = y_eval[target]
 
-        print(f"\nEvaluating models for target: {target}")
+        logging.info(f"Evaluating models for target: {target}")
         for name, model in models.items():
 
             # Fit
@@ -64,11 +79,11 @@ def train(idx, results_df):
             results['train_mse'].append(train_mse)
             results['eval_mse'].append(eval_mse)
 
-            print(f"  {name} - Train MSE: {train_mse:.4f}, Eval MSE: {eval_mse:.4f}")
+            logging.info(f"  {name} - Train MSE: {train_mse:.4f}, Eval MSE: {eval_mse:.4f}")
             
             model_path = f'./checkpoints/{name}_{target}_{idx}.pkl'
             joblib.dump(model, model_path)
-            print(f'model saved to {model_path}')
+            logging.info(f'model saved to {model_path}')
 
 
     new_results_df = pd.DataFrame(results)
@@ -80,7 +95,7 @@ def train(idx, results_df):
     results_df.to_csv("./results.csv", index=False)
     pprint(results_df)
 
-    print("\nModel evaluation completed for all targets.")
+    logging.info("Model evaluation completed for all targets.")
     return results_df
 
 if __name__ == '__main__':

@@ -1,12 +1,23 @@
 # dirs
-/**/__pycache__
-venv
-data
-kaggle_evaluation
+/**/__pycache__/
+venv/
+data/
+kaggle_evaluation/
+checkpoints/ 
+.ipynb_checkpoints/
+temp/
+tmp/
 
-
-# file extensions
+# files
 /**/*.csv
 /**/*.pkl
 /**/*.joblib
+/**/*.parquet
+/**/*.feather
+/**/*.arrow
+/**/*.json
 
+# Logs and temporary files
+*.log
+*.temp
+*.tmp
